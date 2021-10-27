@@ -1,4 +1,5 @@
 // Settings
+const int loopTimeMS = 500;
 const int moistureAI = 0;
 const float emaAlpha = 2.0/(10+1);  // 2/(N+1)
 const float boneDrySoilMoistureVoltage = 1.1;
@@ -8,7 +9,7 @@ const float fullySaturatedAndDrainedSoilMoistureVoltage = 5.0;
 // Range is assigned if soilMoisturePercentageSmoothed is less than the setting percentage but greater than the level below it.
 // i.e. soilMoisturePercentageSmoothed = 10 => VeryDry
 //      soilMoisturePercentageSmoothed = 55 => Moist
-enum SoilMoistureRange {
+enum SoilMoisturePercentageRange {
   VeryDry = 25,
   Dry = 50,
   Moist = 75,
@@ -19,7 +20,7 @@ enum SoilMoistureRange {
 float soilMoistureVoltage = 0.0;
 float soilMoistureVoltageSmoothed = 0.0;
 float soilMoisturePercentageSmoothed = 0.0;
-SoilMoistureRange soilMoistureRange = VeryDry;
+SoilMoisturePercentageRange soilMoisturePercentageRange = VeryDry;
 
 
 
@@ -35,7 +36,7 @@ void loop() {
   soilMoistureVoltage = readAIVoltage(moistureAI);
 
   // Smooth Signal EMA
-  soilMoistureVoltageSmoothed = EMASmoothing(soilMoistureVoltage, soilMoistureVoltageSmoothed);
+  soilMoistureVoltageSmoothed = emaSmoothing(soilMoistureVoltage, soilMoistureVoltageSmoothed);
 
   // Convert To Linear Scale Percent
   if (soilMoistureVoltageSmoothed < boneDrySoilMoistureVoltage) {
@@ -49,6 +50,21 @@ void loop() {
   }
 
   // Assign Range {Very Dry, Dry, Moist, Very Moist}
+  if(soilMoisturePercentageSmoothed < (float)static_cast<SoilMoisturePercentageRange>(VeryDry)) {
+    soilMoisturePercentageRange = SoilMoisturePercentageRange::VeryDry;
+    }
+  else if ((float)static_cast<SoilMoisturePercentageRange>(VeryDry) <= soilMoisturePercentageSmoothed && soilMoisturePercentageSmoothed < (float)static_cast<SoilMoisturePercentageRange>(Dry)) {
+    soilMoisturePercentageRange = SoilMoisturePercentageRange::Dry;
+    }
+  else if ((float)static_cast<SoilMoisturePercentageRange>(Dry) <= soilMoisturePercentageSmoothed && soilMoisturePercentageSmoothed < (float)static_cast<SoilMoisturePercentageRange>(Moist)) {
+    soilMoisturePercentageRange = SoilMoisturePercentageRange::Moist;
+    }
+  else if ((float)static_cast<SoilMoisturePercentageRange>(Moist) <= soilMoisturePercentageSmoothed && soilMoisturePercentageSmoothed < (float)static_cast<SoilMoisturePercentageRange>(VeryMoist)) {
+    soilMoisturePercentageRange = SoilMoisturePercentageRange::VeryMoist;
+    }
+  else {
+    Serial.print("Soil Moisture percentage greater than 100%. Out of bounds.");
+    }
 
   // Save Values to Report
 
@@ -67,6 +83,7 @@ void loop() {
   // Report Comms
 
   // Delay Loop
+  delay(loopTimeMS);
 
   // ====================================================================================
 
@@ -110,7 +127,7 @@ void writeAOVoltage(int aoID, float voltage) {
   }
 }
 
-float EMASmoothing(float measurement, float lastSmoothingResult) {
+float emaSmoothing(float measurement, float lastSmoothingResult) {
   float smoothingResult = emaAlpha * measurement + (1 - emaAlpha) * lastSmoothingResult;
   return smoothingResult;
   }
