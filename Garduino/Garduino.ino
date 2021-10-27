@@ -1,6 +1,8 @@
 // Settings
-const int boneDrySoilMoisturemV = 1100;
-const int fullySaturatedAndDrainedSoilMoisturemV = 5000;
+const int moistureAI = 0;
+const float emaAlpha = 2.0/(10+1);  // 2/(N+1)
+const float boneDrySoilMoistureVoltage = 1.1;
+const float fullySaturatedAndDrainedSoilMoistureVoltage = 5.0;
 
 // Enums Settings
 // Range is assigned if soilMoisturePercentageSmoothed is less than the setting percentage but greater than the level below it.
@@ -16,47 +18,45 @@ enum SoilMoistureRange {
 // Variables
 float soilMoistureVoltage = 0.0;
 float soilMoistureVoltageSmoothed = 0.0;
-int soilMoisturemiliVoltageSmoothed = 0;
 float soilMoisturePercentageSmoothed = 0.0;
 SoilMoistureRange soilMoistureRange = VeryDry;
 
 
 
 void setup() {
-  // initialize serial communication at 9600 bits per second:
+  // initialize serial communication at 9600 bits per second
   Serial.begin(9600);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  // Workflow:
-  // Read Moisture Sensor Signal: (AI0)
-  soilMoistureVoltage = readAIVoltage(0);
+  // put your main code here, to run repeatedly
+  // Workflow
+  // Read Moisture Sensor Signal
+  soilMoistureVoltage = readAIVoltage(moistureAI);
 
-  // Smooth Signal:
-  soilMoistureVoltageSmoothed = soilMoistureVoltage;
+  // Smooth Signal EMA
+  soilMoistureVoltageSmoothed = EMASmoothing(soilMoistureVoltage, soilMoistureVoltageSmoothed);
 
   // Convert To Linear Scale Percent
-  soilMoisturemiliVoltageSmoothed = (int)soilMoistureVoltageSmoothed * 1000;
-  if (soilMoisturemiliVoltageSmoothed < boneDrySoilMoisturemV) {
+  if (soilMoistureVoltageSmoothed < boneDrySoilMoistureVoltage) {
     soilMoisturePercentageSmoothed = 0.0;
   }
-  else if (boneDrySoilMoisturemV <= soilMoisturemiliVoltageSmoothed && soilMoisturemiliVoltageSmoothed < fullySaturatedAndDrainedSoilMoisturemV) {
-    soilMoisturePercentageSmoothed = (soilMoisturemiliVoltageSmoothed - (float)boneDrySoilMoisturemV) / ((float)fullySaturatedAndDrainedSoilMoisturemV - (float)boneDrySoilMoisturemV) * 100;
+  else if (boneDrySoilMoistureVoltage <= soilMoistureVoltageSmoothed && soilMoistureVoltageSmoothed < fullySaturatedAndDrainedSoilMoistureVoltage) {
+    soilMoisturePercentageSmoothed = (soilMoistureVoltageSmoothed - boneDrySoilMoistureVoltage) / (fullySaturatedAndDrainedSoilMoistureVoltage - boneDrySoilMoistureVoltage) * 100;
   }
   else {
     soilMoisturePercentageSmoothed = 100;
   }
 
-  // Assign Range {Very Dry, Dry, Moist, Very Moist}:
+  // Assign Range {Very Dry, Dry, Moist, Very Moist}
 
-  // Save Values to Report:
+  // Save Values to Report
 
-  // Read Temperature Sensor Signal:
-  // Smooth Signal:
-  // Convert To Engineering Units:
-  // Assign Range {Cold, Normal, Hot}:
-  // Save Values to Report:
+  // Read Temperature Sensor Signal
+  // Smooth Signal
+  // Convert To Engineering Units
+  // Assign Range {Cold, Normal, Hot}
+  // Save Values to Report
 
   // Read Light Sensor Signal:
   // Smooth Signal:
@@ -86,10 +86,10 @@ void loop() {
 }
 
 float readAIVoltage(int aiID) {
-  // Returns voltage of aiPin as float point value:
+  // Returns voltage of aiPin as float point value
 
   int sensorValue = analogRead(aiID);
-  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V)
   float voltage = sensorValue * (5.0 / 1023.0);
   return voltage;
 }
@@ -109,3 +109,8 @@ void writeAOVoltage(int aoID, float voltage) {
     analogWrite(aoID, outputValue);
   }
 }
+
+float EMASmoothing(float measurement, float lastSmoothingResult) {
+  float smoothingResult = emaAlpha * measurement + (1 - emaAlpha) * lastSmoothingResult;
+  return smoothingResult;
+  }
