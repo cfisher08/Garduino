@@ -1,5 +1,17 @@
-// Settings
-const int loopTimeMS = 500;
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <WiFiClient.h>
+#include <WiFiServer.h>
+
+// Library
+#include <LiquidCrystal.h>
+
+// LCD Settings
+const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+// Garden Settings
+const int loopTimeMS = 750;
 const int moistureAI = 0;
 const float emaAlpha = 2.0/(10+1);  // 2/(N+1)
 const float boneDrySoilMoistureVoltage = 1.1;
@@ -27,11 +39,14 @@ SoilMoisturePercentageRange soilMoisturePercentageRange = VeryDry;
 void setup() {
   // initialize serial communication at 9600 bits per second
   Serial.begin(9600);
+
+  // set up the LCD's number of columns and rows:
+  lcd.begin(16, 2);
+  // Print a message to the LCD.
+  lcd.print("hello, world!");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly
-  // Workflow
   // Read Moisture Sensor Signal
   soilMoistureVoltage = readAIVoltage(moistureAI);
 
@@ -66,7 +81,35 @@ void loop() {
     Serial.print("Soil Moisture percentage greater than 100%. Out of bounds.");
     }
 
+  // Output values to Serial to debugging
+  Serial.println(String("soilMoistureVoltage: ") + String(soilMoistureVoltage, 2));
+  //delay(loopTimeMS);
+  Serial.println(String("soilMoistureVoltageSmoothed: ") + String(soilMoistureVoltageSmoothed, 2));
+  //delay(loopTimeMS);
+  Serial.println(String("soilMoisturePercentageSmoothed: ") + String(soilMoisturePercentageSmoothed, 2));
+  //delay(loopTimeMS);
+  Serial.println(String("SoilMoisturePercentageRange: ") + String(soilMoisturePercentageRange));
+  //delay(loopTimeMS);
+  Serial.println();
+
+  // Print to LCD Screen
+  // set the cursor to column 0, line 1
+  // (note: line 1 is the second row, since counting begins with 0):
+  lcd.setCursor(0, 1);
+  lcd.print(String("soilMoistureVoltage: ") + String(soilMoistureVoltage, 2));
+  delay(3000);
+  lcd.setCursor(0, 1);
+  lcd.print(String("soilMoistureVoltageSmoothed: ") + String(soilMoistureVoltageSmoothed, 2));
+  delay(3000);
+  lcd.setCursor(0, 1);
+  lcd.print(String("soilMoisturePercentageSmoothed: ") + String(soilMoisturePercentageSmoothed, 2));
+  delay(3000);
+  lcd.setCursor(0, 1);
+  lcd.print(String("SoilMoisturePercentageRange: ") + String(soilMoisturePercentageRange));
+  delay(3000);
+
   // Save Values to Report
+
 
   // Read Temperature Sensor Signal
   // Smooth Signal
@@ -126,6 +169,7 @@ void writeAOVoltage(int aoID, float voltage) {
     analogWrite(aoID, outputValue);
   }
 }
+
 
 float emaSmoothing(float measurement, float lastSmoothingResult) {
   float smoothingResult = emaAlpha * measurement + (1 - emaAlpha) * lastSmoothingResult;
